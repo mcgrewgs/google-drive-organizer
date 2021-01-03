@@ -5,7 +5,7 @@ Recursively crawls a `SOURCE_FOLDER_ID` folder in Google Drive and organizes fil
 # Running
 
 ```sh
-[root@localhost ~]$ git clone ssh://git@github.com/mcgrewgs/google-drive-organizer.git
-[root@localhost ~]$ cd google-drive-organizer
-[root@localhost ~]$ make run
+git clone ssh://git@github.com/mcgrewgs/google-drive-organizer.git
+cd google-drive-organizer
+make run
 ```
