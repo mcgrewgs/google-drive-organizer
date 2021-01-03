@@ -6,7 +6,7 @@ import { Logger } from "@nestjs/common";
 const logger = new Logger("client/drive.ts", true);
 
 import * as fs from "fs";
-import { OAuth2Client } from "google-auth-library";
+import { Credentials, OAuth2Client } from "google-auth-library";
 import { google } from "googleapis";
 import prompts from "prompts";
 import { File, Folder } from "../model/drive";
@@ -18,7 +18,14 @@ const SCOPES = ["https://www.googleapis.com/auth/drive"];
 // time.
 const TOKEN_PATH = "token.json";
 
-const credsContent = JSON.parse(
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+const credsContent: {
+    installed: {
+        client_secret: string;
+        client_id: string;
+        redirect_uris: string[];
+    };
+} = JSON.parse(
     fs.readFileSync(process.env.CREDENTIALS_JSON_FILENAME).toString()
 );
 
@@ -35,7 +42,8 @@ export async function getClient(): Promise<OAuth2Client> {
 
     // Check if we have previously stored a token.
     try {
-        const tokenContents = JSON.parse(
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const tokenContents: Credentials = JSON.parse(
             fs.readFileSync(TOKEN_PATH).toString()
         );
         oAuth2Client.setCredentials(tokenContents);

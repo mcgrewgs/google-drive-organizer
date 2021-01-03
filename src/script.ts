@@ -78,6 +78,6 @@ async function main(): Promise<void> {
     }
 }
 
-main().then(() => {
+void main().then(() => {
     logger.log("Main done!");
 });
