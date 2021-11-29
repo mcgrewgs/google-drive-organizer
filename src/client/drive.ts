@@ -29,6 +29,8 @@ const credsContent: {
     fs.readFileSync(process.env.CREDENTIALS_JSON_FILENAME).toString()
 );
 
+const driveFolderMimeType = 'application/vnd.google-apps.folder';
+
 /**
  * Create an OAuth2 client and return it.
  */
@@ -77,6 +79,8 @@ async function getAccessToken(
     return oAuth2Client;
 }
 
+const listFilesFields = "nextPageToken, files(id, name, parents, mimeType, fileExtension, md5Checksum, size)";
+
 /**
  * Lists the names and IDs of up to 10 files.
  * @param {google.auth.OAuth2} auth An authorized OAuth2 client.
@@ -94,9 +98,9 @@ export async function listFiles(
     const filesToReturn: File[] = [];
 
     const res = await drive.files.list({
-        q: `mimeType!='application/vnd.google-apps.folder' and '${parent.id}' in parents`,
+        q: `mimeType!='${driveFolderMimeType}' and '${parent.id}' in parents`,
         pageSize: n,
-        fields: "nextPageToken, files(id, name, parents)",
+        fields: listFilesFields,
         pageToken,
     });
     const files = res.data.files;
@@ -112,6 +116,10 @@ export async function listFiles(
                     name: file.name,
                     id: file.id,
                     parents: p,
+                    fileExtension: file.fileExtension,
+                    md5Checksum: file.md5Checksum,
+                    mimeType: file.mimeType,
+                    size: file.size
                 });
             }
         }
@@ -146,9 +154,9 @@ export async function listFilesRecursive(
     const filesToReturn: File[] = [];
 
     const res = await drive.files.list({
-        q: `mimeType!='application/vnd.google-apps.folder' and '${parent.id}' in parents`,
+        q: `mimeType!='${driveFolderMimeType}' and '${parent.id}' in parents`,
         pageSize: n,
-        fields: "nextPageToken, files(id, name, parents)",
+        fields: listFilesFields,
         pageToken,
     });
     const files = res.data.files;
@@ -164,6 +172,10 @@ export async function listFilesRecursive(
                     name: file.name,
                     id: file.id,
                     parents: p,
+                    fileExtension: file.fileExtension,
+                    md5Checksum: file.md5Checksum,
+                    mimeType: file.mimeType,
+                    size: file.size
                 });
             }
         }
@@ -210,7 +222,7 @@ export async function listFolders(
     const filesToReturn: Folder[] = [];
 
     const res = await drive.files.list({
-        q: `mimeType='application/vnd.google-apps.folder' and '${parent.id}' in parents`,
+        q: `mimeType='${driveFolderMimeType}' and '${parent.id}' in parents`,
         pageSize: n,
         fields: "nextPageToken, files(id, name)",
         pageToken,
@@ -254,4 +266,51 @@ export async function moveFile(
         addParents: parentId,
     });
     return res.data.parents?.includes(parentId) || false;
+}
+
+export async function renameFile(
+    oAuth2Client: OAuth2Client,
+    file: File,
+    newName: string
+): Promise<boolean> {
+    const drive = google.drive({ version: "v3", auth: oAuth2Client });
+    const res = await drive.files.update({
+        fileId: file.id,
+        requestBody: {
+            name: newName
+        }
+    });
+    return res.data.name === newName;
+}
+
+
+const duplicatesFolderName = '0000_duplicates';
+
+export async function getDuplicatesFolder(
+    oAuth2Client: OAuth2Client,
+    parent: Folder = {
+        id: process.env.TARGET_PARENT_FOLDER_ID,
+        name: process.env.TARGET_PARENT_FOLDER_NAME,
+    }
+): Promise<Folder> {
+    const folders = await listFolders(oAuth2Client, parent);
+    for (const f of folders) {
+        if (f.name === duplicatesFolderName) {
+            return f;
+        }
+    }
+    const drive = google.drive({ version: "v3", auth: oAuth2Client });
+    const folder = await drive.files.create({
+        requestBody: {
+            name: duplicatesFolderName,
+            parents: [
+                parent.id
+            ],
+            mimeType: driveFolderMimeType
+        }
+    });
+    return {
+        id: folder.data.id || '',
+        name: folder.data.name || ''
+    }
 }
